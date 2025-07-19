@@ -419,14 +419,13 @@ bool Recompiler::Recompile(
             }
         };
 
-    auto printSetFlushMode = [&](bool enable)
+    auto printSetCSRState = [&](const CSRState newState)
         {
-            auto newState = enable ? CSRState::VMX : CSRState::FPU;
             if (csrState != newState)
             {
-                auto prefix = enable ? "enable" : "disable";
+                auto prefix = newState == CSRState::VMX ? "Vmx" : "Fpu";
                 auto suffix = csrState != CSRState::Unknown ? "Unconditional" : "";
-                println("\tctx.fpscr.{}FlushMode{}();", prefix, suffix);
+                println("\tctx.fpscr.switchTo{}{}();", prefix, suffix);
 
                 csrState = newState;
             }
@@ -870,147 +869,147 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_FABS:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.u64 = {}.u64 & ~0x8000000000000000;", f(insn.operands[0]), f(insn.operands[1]));
         break;
 
     case PPC_INST_FADD:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = {}.f64 + {}.f64;", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]));
         break;
 
     case PPC_INST_FADDS:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = double(float({}.f64 + {}.f64));", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]));
         break;
 
     case PPC_INST_FCFID:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = double({}.s64);", f(insn.operands[0]), f(insn.operands[1]));
         break;
 
     case PPC_INST_FCMPU:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.compare({}.f64, {}.f64);", cr(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]));
         break;
 
     case PPC_INST_FCTID:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.s64 = ({}.f64 > double(LLONG_MAX)) ? LLONG_MAX : simde_mm_cvtsd_si64(simde_mm_load_sd(&{}.f64));", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[1]));
         break;
 
     case PPC_INST_FCTIDZ:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.s64 = ({}.f64 > double(LLONG_MAX)) ? LLONG_MAX : simde_mm_cvttsd_si64(simde_mm_load_sd(&{}.f64));", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[1]));
         break;
 
     case PPC_INST_FCTIWZ:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.s64 = ({}.f64 > double(INT_MAX)) ? INT_MAX : simde_mm_cvttsd_si32(simde_mm_load_sd(&{}.f64));", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[1]));
         break;
 
     case PPC_INST_FDIV:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = {}.f64 / {}.f64;", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]));
         break;
 
     case PPC_INST_FDIVS:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = double(float({}.f64 / {}.f64));", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]));
         break;
 
     case PPC_INST_FMADD:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = {}.f64 * {}.f64 + {}.f64;", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]), f(insn.operands[3]));
         break;
 
     case PPC_INST_FMADDS:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = double(float({}.f64 * {}.f64 + {}.f64));", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]), f(insn.operands[3]));
         break;
 
     case PPC_INST_FMR:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = {}.f64;", f(insn.operands[0]), f(insn.operands[1]));
         break;
 
     case PPC_INST_FMSUB:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = {}.f64 * {}.f64 - {}.f64;", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]), f(insn.operands[3]));
         break;
 
     case PPC_INST_FMSUBS:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = double(float({}.f64 * {}.f64 - {}.f64));", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]), f(insn.operands[3]));
         break;
 
     case PPC_INST_FMUL:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = {}.f64 * {}.f64;", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]));
         break;
 
     case PPC_INST_FMULS:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = double(float({}.f64 * {}.f64));", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]));
         break;
 
     case PPC_INST_FNABS:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.u64 = {}.u64 | 0x8000000000000000;", f(insn.operands[0]), f(insn.operands[1]));
         break;
 
     case PPC_INST_FNEG:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.u64 = {}.u64 ^ 0x8000000000000000;", f(insn.operands[0]), f(insn.operands[1]));
         break;
 
     case PPC_INST_FNMADDS:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = double(float(-({}.f64 * {}.f64 + {}.f64)));", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]), f(insn.operands[3]));
         break;
 
     case PPC_INST_FNMSUB:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = -({}.f64 * {}.f64 - {}.f64);", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]), f(insn.operands[3]));
         break;
 
     case PPC_INST_FNMSUBS:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = double(float(-({}.f64 * {}.f64 - {}.f64)));", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]), f(insn.operands[3]));
         break;
 
     case PPC_INST_FRES:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = float(1.0 / {}.f64);", f(insn.operands[0]), f(insn.operands[1]));
         break;
 
     case PPC_INST_FRSP:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = double(float({}.f64));", f(insn.operands[0]), f(insn.operands[1]));
         break;
 
     case PPC_INST_FSEL:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = {}.f64 >= 0.0 ? {}.f64 : {}.f64;", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]), f(insn.operands[3]));
         break;
 
     case PPC_INST_FSQRT:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = sqrt({}.f64);", f(insn.operands[0]), f(insn.operands[1]));
         break;
 
     case PPC_INST_FSQRTS:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = double(float(sqrt({}.f64)));", f(insn.operands[0]), f(insn.operands[1]));
         break;
 
     case PPC_INST_FSUB:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = {}.f64 - {}.f64;", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]));
         break;
 
     case PPC_INST_FSUBS:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f64 = double(float({}.f64 - {}.f64));", f(insn.operands[0]), f(insn.operands[1]), f(insn.operands[2]));
         break;
 
@@ -1063,7 +1062,7 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_LFD:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         print("\t{}.u64 = PPC_LOAD_U64(", f(insn.operands[0]));
         if (insn.operands[2] != 0)
             print("{}.u32 + ", r(insn.operands[2]));
@@ -1071,7 +1070,7 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_LFDX:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         print("\t{}.u64 = PPC_LOAD_U64(", f(insn.operands[0]));
         if (insn.operands[1] != 0)
             print("{}.u32 + ", r(insn.operands[1]));
@@ -1079,7 +1078,7 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_LFS:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         print("\t{}.u32 = PPC_LOAD_U32(", temp());
         if (insn.operands[2] != 0)
             print("{}.u32 + ", r(insn.operands[2]));
@@ -1088,7 +1087,7 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_LFSX:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         print("\t{}.u32 = PPC_LOAD_U32(", temp());
         if (insn.operands[1] != 0)
             print("{}.u32 + ", r(insn.operands[1]));
@@ -1531,7 +1530,7 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_STFD:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         print("{}", mmioStore() ? "\tPPC_MM_STORE_U64(" : "\tPPC_STORE_U64(");
         if (insn.operands[2] != 0)
             print("{}.u32 + ", r(insn.operands[2]));
@@ -1539,7 +1538,7 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_STFDX:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         print("{}", mmioStore() ? "\tPPC_MM_STORE_U64(" : "\tPPC_STORE_U64(");
         if (insn.operands[1] != 0)
             print("{}.u32 + ", r(insn.operands[1]));
@@ -1547,7 +1546,7 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_STFIWX:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         print("{}", mmioStore() ? "\tPPC_MM_STORE_U32(" : "\tPPC_STORE_U32(");
         if (insn.operands[1] != 0)
             print("{}.u32 + ", r(insn.operands[1]));
@@ -1555,7 +1554,7 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_STFS:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f32 = float({}.f64);", temp(), f(insn.operands[0]));
         print("{}", mmioStore() ? "\tPPC_MM_STORE_U32(" : "\tPPC_STORE_U32(");
         if (insn.operands[2] != 0)
@@ -1564,7 +1563,7 @@ bool Recompiler::Recompile(
         break;
 
     case PPC_INST_STFSX:
-        printSetFlushMode(false);
+        printSetCSRState(CSRState::FPU);
         println("\t{}.f32 = float({}.f64);", temp(), f(insn.operands[0]));
         print("{}", mmioStore() ? "\tPPC_MM_STORE_U32(" : "\tPPC_STORE_U32(");
         if (insn.operands[1] != 0)
@@ -1744,7 +1743,7 @@ bool Recompiler::Recompile(
 
     case PPC_INST_VADDFP:
     case PPC_INST_VADDFP128:
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_add_ps(simde_mm_load_ps({}.f32), simde_mm_load_ps({}.f32)));", v(insn.operands[0]), v(insn.operands[1]), v(insn.operands[2]));
         break;
 
@@ -1796,7 +1795,7 @@ bool Recompiler::Recompile(
 
     case PPC_INST_VCTSXS:
     case PPC_INST_VCFPSXWS128:
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         print("\tsimde_mm_store_si128((simde__m128i*){}.s32, simde_mm_vctsxs(", v(insn.operands[0]));
         if (insn.operands[2] != 0)
             println("simde_mm_mul_ps(simde_mm_load_ps({}.f32), simde_mm_set1_ps({}))));", v(insn.operands[1]), 1u << insn.operands[2]);
@@ -1807,7 +1806,7 @@ bool Recompiler::Recompile(
     case PPC_INST_VCFSX:
     case PPC_INST_VCSXWFP128:
     {
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         print("\tsimde_mm_store_ps({}.f32, ", v(insn.operands[0]));
         if (insn.operands[2] != 0)
         {
@@ -1824,7 +1823,7 @@ bool Recompiler::Recompile(
     case PPC_INST_VCFUX:
     case PPC_INST_VCUXWFP128:
     {
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         print("\tsimde_mm_store_ps({}.f32, ", v(insn.operands[0]));
         if (insn.operands[2] != 0)
         {
@@ -1845,7 +1844,7 @@ bool Recompiler::Recompile(
 
     case PPC_INST_VCMPEQFP:
     case PPC_INST_VCMPEQFP128:
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_cmpeq_ps(simde_mm_load_ps({}.f32), simde_mm_load_ps({}.f32)));", v(insn.operands[0]), v(insn.operands[1]), v(insn.operands[2]));
         if (strchr(insn.opcode->name, '.'))
             println("\t{}.setFromMask(simde_mm_load_ps({}.f32), 0xF);", cr(6), v(insn.operands[0]));
@@ -1866,7 +1865,7 @@ bool Recompiler::Recompile(
 
     case PPC_INST_VCMPGEFP:
     case PPC_INST_VCMPGEFP128:
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_cmpge_ps(simde_mm_load_ps({}.f32), simde_mm_load_ps({}.f32)));", v(insn.operands[0]), v(insn.operands[1]), v(insn.operands[2]));
         if (strchr(insn.opcode->name, '.'))
             println("\t{}.setFromMask(simde_mm_load_ps({}.f32), 0xF);", cr(6), v(insn.operands[0]));
@@ -1874,7 +1873,7 @@ bool Recompiler::Recompile(
 
     case PPC_INST_VCMPGTFP:
     case PPC_INST_VCMPGTFP128:
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_cmpgt_ps(simde_mm_load_ps({}.f32), simde_mm_load_ps({}.f32)));", v(insn.operands[0]), v(insn.operands[1]), v(insn.operands[2]));
         if (strchr(insn.opcode->name, '.'))
             println("\t{}.setFromMask(simde_mm_load_ps({}.f32), 0xF);", cr(6), v(insn.operands[0]));
@@ -1893,7 +1892,7 @@ bool Recompiler::Recompile(
     case PPC_INST_VEXPTEFP:
     case PPC_INST_VEXPTEFP128:
         // TODO: vectorize
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         for (size_t i = 0; i < 4; i++)
             println("\t{}.f32[{}] = exp2f({}.f32[{}]);", v(insn.operands[0]), i, v(insn.operands[1]), i);
         break;
@@ -1901,7 +1900,7 @@ bool Recompiler::Recompile(
     case PPC_INST_VLOGEFP:
     case PPC_INST_VLOGEFP128:
         // TODO: vectorize
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         for (size_t i = 0; i < 4; i++)
             println("\t{}.f32[{}] = log2f({}.f32[{}]);", v(insn.operands[0]), i, v(insn.operands[1]), i);
         break;
@@ -1909,13 +1908,13 @@ bool Recompiler::Recompile(
     case PPC_INST_VMADDCFP128:
     case PPC_INST_VMADDFP:
     case PPC_INST_VMADDFP128:
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_add_ps(simde_mm_mul_ps(simde_mm_load_ps({}.f32), simde_mm_load_ps({}.f32)), simde_mm_load_ps({}.f32)));", v(insn.operands[0]), v(insn.operands[1]), v(insn.operands[2]), v(insn.operands[3]));
         break;
 
     case PPC_INST_VMAXFP:
     case PPC_INST_VMAXFP128:
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_max_ps(simde_mm_load_ps({}.f32), simde_mm_load_ps({}.f32)));", v(insn.operands[0]), v(insn.operands[1]), v(insn.operands[2]));
         break;
 
@@ -1925,7 +1924,7 @@ bool Recompiler::Recompile(
 
     case PPC_INST_VMINFP:
     case PPC_INST_VMINFP128:
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_min_ps(simde_mm_load_ps({}.f32), simde_mm_load_ps({}.f32)));", v(insn.operands[0]), v(insn.operands[1]), v(insn.operands[2]));
         break;
 
@@ -1957,23 +1956,23 @@ bool Recompiler::Recompile(
 
     case PPC_INST_VMSUM3FP128:
         // NOTE: accounting for full vector reversal here. should dot product yzw instead of xyz
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_dp_ps(simde_mm_load_ps({}.f32), simde_mm_load_ps({}.f32), 0xEF));", v(insn.operands[0]), v(insn.operands[1]), v(insn.operands[2]));
         break;
 
     case PPC_INST_VMSUM4FP128:
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_dp_ps(simde_mm_load_ps({}.f32), simde_mm_load_ps({}.f32), 0xFF));", v(insn.operands[0]), v(insn.operands[1]), v(insn.operands[2]));
         break;
 
     case PPC_INST_VMULFP128:
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_mul_ps(simde_mm_load_ps({}.f32), simde_mm_load_ps({}.f32)));", v(insn.operands[0]), v(insn.operands[1]), v(insn.operands[2]));
         break;
 
     case PPC_INST_VNMSUBFP:
     case PPC_INST_VNMSUBFP128:
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_xor_ps(simde_mm_sub_ps(simde_mm_mul_ps(simde_mm_load_ps({}.f32), simde_mm_load_ps({}.f32)), simde_mm_load_ps({}.f32)), simde_mm_castsi128_ps(simde_mm_set1_epi32(int(0x80000000)))));", v(insn.operands[0]), v(insn.operands[1]), v(insn.operands[2]), v(insn.operands[3]));
         break;
 
@@ -2008,7 +2007,7 @@ bool Recompiler::Recompile(
     case PPC_INST_VPKD3D128:
         // TODO: vectorize somehow?
         // NOTE: handling vector reversal here too
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         switch (insn.operands[2])
         {
         case 0: // D3D color
@@ -2039,25 +2038,25 @@ bool Recompiler::Recompile(
     case PPC_INST_VREFP:
     case PPC_INST_VREFP128:
         // TODO: see if we can use rcp safely
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_div_ps(simde_mm_set1_ps(1), simde_mm_load_ps({}.f32)));", v(insn.operands[0]), v(insn.operands[1]));
         break;
 
     case PPC_INST_VRFIM:
     case PPC_INST_VRFIM128:
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_round_ps(simde_mm_load_ps({}.f32), SIMDE_MM_FROUND_TO_NEG_INF | SIMDE_MM_FROUND_NO_EXC));", v(insn.operands[0]), v(insn.operands[1]));
         break;
 
     case PPC_INST_VRFIN:
     case PPC_INST_VRFIN128:
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_round_ps(simde_mm_load_ps({}.f32), SIMDE_MM_FROUND_TO_NEAREST_INT | SIMDE_MM_FROUND_NO_EXC));", v(insn.operands[0]), v(insn.operands[1]));
         break;
 
     case PPC_INST_VRFIZ:
     case PPC_INST_VRFIZ128:
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_round_ps(simde_mm_load_ps({}.f32), SIMDE_MM_FROUND_TO_ZERO | SIMDE_MM_FROUND_NO_EXC));", v(insn.operands[0]), v(insn.operands[1]));
         break;
 
@@ -2072,7 +2071,7 @@ bool Recompiler::Recompile(
     case PPC_INST_VRSQRTEFP128:
         // TODO: see if we can use rsqrt safely
         // TODO: we can detect if the input is from a dot product and apply logic only on one value
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_div_ps(simde_mm_set1_ps(1), simde_mm_sqrt_ps(simde_mm_load_ps({}.f32))));", v(insn.operands[0]), v(insn.operands[1]));
         break;
 
@@ -2208,7 +2207,7 @@ bool Recompiler::Recompile(
 
     case PPC_INST_VCTUXS:
     case PPC_INST_VCFPUXWS128:
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         print("\tsimde_mm_store_si128((simde__m128i*){}.u32, simde_mm_vctuxs(", v(insn.operands[0]));
         if (insn.operands[2] != 0)
             println("simde_mm_mul_ps(simde_mm_load_ps({}.f32), simde_mm_set1_ps({}))));", v(insn.operands[1]), 1u << insn.operands[2]);
@@ -2318,7 +2317,7 @@ bool Recompiler::Recompile(
 
     case PPC_INST_VSUBFP:
     case PPC_INST_VSUBFP128:
-        printSetFlushMode(true);
+        printSetCSRState(CSRState::VMX);
         println("\tsimde_mm_store_ps({}.f32, simde_mm_sub_ps(simde_mm_load_ps({}.f32), simde_mm_load_ps({}.f32)));", v(insn.operands[0]), v(insn.operands[1]), v(insn.operands[2]));
         break;
 

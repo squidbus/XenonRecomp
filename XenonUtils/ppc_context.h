@@ -216,15 +216,22 @@ union alignas(0x10) PPCVRegister
 #define PPC_ROUND_UP 0x02
 #define PPC_ROUND_DOWN 0x03
 #define PPC_ROUND_MASK 0x03
+#define PPC_NON_IEEE 0x04
+
+enum class PPCFPCSRMode
+{
+    Unknown,
+    FPU,
+    VMX
+};
 
 struct PPCFPSCRRegister
 {
-    uint32_t csr;
-
     static constexpr size_t HostToGuest[] = { PPC_ROUND_NEAREST, PPC_ROUND_DOWN, PPC_ROUND_UP, PPC_ROUND_TOWARD_ZERO };
 
     // simde does not handle denormal flags, so we need to implement per-arch.
 #if defined(__x86_64__) || defined(_M_X64)
+    static constexpr size_t DefaultCSR = _MM_MASK_MASK;
     static constexpr size_t RoundShift = 13;
     static constexpr size_t RoundMask = SIMDE_MM_ROUND_MASK;
     static constexpr size_t FlushMask = SIMDE_MM_FLUSH_ZERO_MASK | _MM_DENORMALS_ZERO_MASK;
@@ -240,12 +247,13 @@ struct PPCFPSCRRegister
         simde_mm_setcsr(csr);
     }
 #elif defined(__aarch64__) || defined(_M_ARM64)
+    static constexpr size_t DefaultCSR = 0;
     // RMode
     static constexpr size_t RoundShift = 22;
     static constexpr size_t RoundMask = 3 << RoundShift;
     // FZ and FZ16
     static constexpr size_t FlushMask = (1 << 19) | (1 << 24);
-    // Nearest, Zero, -Infinity, -Infinity
+    // Nearest, Zero, +Infinity, -Infinity
     static constexpr size_t GuestToHost[] = { 0 << RoundShift, 3 << RoundShift, 1 << RoundShift, 2 << RoundShift };
 
     inline uint32_t getcsr() noexcept
@@ -263,46 +271,54 @@ struct PPCFPSCRRegister
 #   error "Missing implementation for FPSCR."
 #endif
 
+    PPCFPCSRMode mode = PPCFPCSRMode::Unknown;
+    uint32_t fpu_csr = DefaultCSR;
+    uint32_t vmx_csr = DefaultCSR | FlushMask;
+
     inline uint32_t loadFromHost() noexcept
     {
-        csr = getcsr();
-        return HostToGuest[(csr & RoundMask) >> RoundShift];
+        uint32_t guest_csr = HostToGuest[(fpu_csr & RoundMask) >> RoundShift];
+        if (fpu_csr & FlushMask) [[unlikely]] {
+            guest_csr |= PPC_NON_IEEE;
+        }
+        return guest_csr;
     }
-        
+
     inline void storeFromGuest(uint32_t value) noexcept
     {
-        csr &= ~RoundMask;
-        csr |= GuestToHost[value & PPC_ROUND_MASK];
-        setcsr(csr);
-    }
+        fpu_csr &= ~RoundMask;
+        fpu_csr |= GuestToHost[value & PPC_ROUND_MASK];
 
-    inline void enableFlushModeUnconditional() noexcept
-    {
-        csr |= FlushMask;
-        setcsr(csr);
-    }
+        if (value & PPC_NON_IEEE) [[unlikely]] {
+            fpu_csr |= FlushMask;
+        } else {
+            fpu_csr &= ~FlushMask;
+        }
 
-    inline void disableFlushModeUnconditional() noexcept
-    {
-        csr &= ~FlushMask;
-        setcsr(csr);
-    }
-
-    inline void enableFlushMode() noexcept
-    {
-        if ((csr & FlushMask) != FlushMask) [[unlikely]]
-        {
-            csr |= FlushMask;
-            setcsr(csr);
+        if (mode == PPCFPCSRMode::FPU) {
+            setcsr(fpu_csr);
         }
     }
 
-    inline void disableFlushMode() noexcept
-    {
-        if ((csr & FlushMask) != 0) [[unlikely]]
-        {
-            csr &= ~FlushMask;
-            setcsr(csr);
+    inline void switchToFpuUnconditional() noexcept {
+        mode = PPCFPCSRMode::FPU;
+        setcsr(fpu_csr);
+    }
+
+    inline void switchToVmxUnconditional() noexcept {
+        mode = PPCFPCSRMode::VMX;
+        setcsr(vmx_csr);
+    }
+
+    inline void switchToFpu() noexcept {
+        if (mode != PPCFPCSRMode::FPU) {
+            switchToFpuUnconditional();
+        }
+    }
+
+    inline void switchToVmx() noexcept {
+        if (mode != PPCFPCSRMode::VMX) {
+            switchToVmxUnconditional();
         }
     }
 };
